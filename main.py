@@ -6,8 +6,10 @@ import sys
 FPS = 60  # Количество кадров в  секунду
 WIDTH = 1200  # Ширина окна
 HEIGHT = 800  # Высота окна
+ALL_WIDTH = 0
 RUNNING = True  # Переменная для проверки работы программы
 player = None  # Основной персонаж
+STEP = 10
 
 
 def terminate():  # Функция для выхода из игры
@@ -34,15 +36,18 @@ def load_image(name, color_key=None):  # Функция загрузки про�
 
 
 def load_level(filename):
+    global ALL_WIDTH
     filename = "levels/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
 
-    # и подсчитываем максимальную длину    
+    # и подсчитываем максимальную длину
     max_width = max(map(len, level_map))
 
-    # дополняем каждую строку пустыми клетками ('.')    
+    ALL_WIDTH = max_width * 50
+
+    # дополняем каждую строку пустыми клетками ('.')
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
@@ -59,26 +64,52 @@ def generate_level(level):
                 new_player = Player(x, y)
             elif level[y][x] == '#':
                 Tile('ground', x, y)
-    # вернем игрока, а также размер поля в клетках            
+    # вернем игрока, а также размер поля в клетках
     return new_player, x, y
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        if target.x + target.rect.w // 2 >= WIDTH // 2:
+            self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
+            print(self.dx)
 
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
         self.image = tile_images[tile_type]
-        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
+        self.rect = self.image.get_rect().move(tile_width * pos_x,
+                                               tile_height * pos_y)
 
 
 class Player(pygame.sprite.Sprite):
 
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
+        self.x = tile_width * pos_x
         self.image = player_image
-        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y - 5)
+        self.rect = self.image.get_rect().move(tile_width * pos_x,
+                                               tile_height * pos_y - 5)
 
 
 pygame.init()
+
+pygame.key.set_repeat(200, 70)
+
+pygame.display.set_caption('Treasure hunt')
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 all_sprites = pygame.sprite.Group()
@@ -87,13 +118,17 @@ player_group = pygame.sprite.Group()
 
 background = pygame.image.load("data/background.png").convert()
 
-tile_images = {'dirty': load_image('dirty.png'), 'ground': load_image('ground.png'), 'empty': load_image('white.png', -1)}
+tile_images = {'dirty': load_image('dirty.png'),
+               'ground': load_image('ground.png'),
+               'empty': load_image('white.png', -1)}
 
 tile_width = tile_height = 50
 
 player_image = load_image('player.png', color_key=-1)
 
 player, level_x, level_y = generate_level(load_level("FirstLevel.txt"))
+
+camera = Camera()
 
 clock = pygame.time.Clock()
 
@@ -102,6 +137,21 @@ while RUNNING:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             RUNNING = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                player.rect.x -= STEP
+                player.x -= STEP
+            if event.key == pygame.K_RIGHT:
+                player.rect.x += STEP
+                player.x += STEP
+            if event.key == pygame.K_UP:
+                player.rect.y -= STEP
+
+    # изменяем ракурс камеры
+    camera.update(player); 
+    # обновляем положение всех спрайтов
+    for sprite in all_sprites:
+        camera.apply(sprite)
 
     screen.blit(background, [0, 0])
 
@@ -111,4 +161,4 @@ while RUNNING:
 
     clock.tick(FPS)
 
-terminate()
+terminate()  # Выход из игры
