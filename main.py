@@ -3,12 +3,14 @@ import os
 import sys
 # Импортирование библиотек
 
-FPS = 60  # Количество кадров в  секунду
+FPS = 30  # Количество кадров в секунду
 WIDTH = 1200  # Ширина окна
 HEIGHT = 800  # Высота окна
 ALL_WIDTH = 0  # Длинна всего окна
 RUNNING = True  # Переменная для проверки работы программы
 player = None  # Основной персонаж
+JUMP = False
+jumpCount = 12
 STEP = 10  # Перемещние ща одно нажатие
 
 
@@ -72,18 +74,19 @@ class Camera:
     # зададим начальный сдвиг камеры
     def __init__(self):
         self.dx = 0
-        self.dy = 0
 
     # сдвинуть объект obj на смещение камеры
     def apply(self, obj):
         obj.rect.x += self.dx
-        obj.rect.y += self.dy
 
     # позиционировать камеру на объекте target
     def update(self, target):
         if target.x + target.rect.w // 2 >= WIDTH // 2 and \
            target.x + target.rect.w // 2 + WIDTH // 2 <= ALL_WIDTH:
             self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
+        else:
+            self.dx = 0
+
 
 
 class Tile(pygame.sprite.Sprite):
@@ -137,16 +140,24 @@ while RUNNING:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             RUNNING = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT and player.x > -10:
-                player.rect.x -= STEP
-                player.x -= STEP
-            if event.key == pygame.K_RIGHT and \
-               player.x + player.rect.w <= ALL_WIDTH:
-                player.rect.x += STEP
-                player.x += STEP
-            if event.key == pygame.K_UP:
-                player.rect.y -= STEP
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT] and player.x > -10:
+        player.rect.x -= STEP
+        player.x -= STEP
+    if keys[pygame.K_RIGHT] and \
+       player.x + player.rect.w <= ALL_WIDTH:
+        player.rect.x += STEP
+        player.x += STEP
+    if not JUMP:
+        if keys[pygame.K_UP]:
+            JUMP = True
+    else:
+        if jumpCount >= -12:
+            player.rect.y -= jumpCount
+            jumpCount -= 1
+        else:
+            jumpCount = 12
+            JUMP = False
 
     # изменяем ракурс камеры
     camera.update(player)
