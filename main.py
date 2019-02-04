@@ -6,10 +6,10 @@ import sys
 FPS = 60  # Количество кадров в  секунду
 WIDTH = 1200  # Ширина окна
 HEIGHT = 800  # Высота окна
-ALL_WIDTH = 0
+ALL_WIDTH = 0  # Длинна всего окна
 RUNNING = True  # Переменная для проверки работы программы
 player = None  # Основной персонаж
-STEP = 10
+STEP = 10  # Перемещние ща одно нажатие
 
 
 def terminate():  # Функция для выхода из игры
@@ -81,9 +81,9 @@ class Camera:
 
     # позиционировать камеру на объекте target
     def update(self, target):
-        if target.x + target.rect.w // 2 >= WIDTH // 2:
+        if target.x + target.rect.w // 2 >= WIDTH // 2 and \
+           target.x + target.rect.w // 2 + WIDTH // 2 <= ALL_WIDTH:
             self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
-            print(self.dx)
 
 
 class Tile(pygame.sprite.Sprite):
@@ -138,17 +138,18 @@ while RUNNING:
         if event.type == pygame.QUIT:
             RUNNING = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
+            if event.key == pygame.K_LEFT and player.x > -10:
                 player.rect.x -= STEP
                 player.x -= STEP
-            if event.key == pygame.K_RIGHT:
+            if event.key == pygame.K_RIGHT and \
+               player.x + player.rect.w <= ALL_WIDTH:
                 player.rect.x += STEP
                 player.x += STEP
             if event.key == pygame.K_UP:
                 player.rect.y -= STEP
 
     # изменяем ракурс камеры
-    camera.update(player); 
+    camera.update(player)
     # обновляем положение всех спрайтов
     for sprite in all_sprites:
         camera.apply(sprite)
