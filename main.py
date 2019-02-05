@@ -4,24 +4,36 @@ import sys
 # Импортирование библиотек
 
 LIVES = 3
-FPS = 30  # Количество кадров в секунду
+FPS = 60  # Количество кадров в секунду
 WIDTH = 1200  # Ширина окна
+ALL_WIDTH = 0
 HEIGHT = 800  # Высота окна
-ALL_WIDTH = 0  # Длинна всего окна
 RUNNING = True  # Переменная для проверки работы программы
 player = None  # Основной персонаж
-JUMP = False  # Переменная для прыжка
-FALL = 5  # Количество пикселей при падении
+JUMP = False
+DAMAGE = False
+FALL = False  # Количество пикселей при падении
 jumpCount = 12  # Высота прыжка
-ISFALL = False  # Переменная запрещающая прыгать
 STEP = 10  # Перемещние ща одно нажатие
-HARM = False
-Time = 0
+LEFT = True
+RIGHT = True
+TIME = 0
 
 
 def terminate():  # Функция для выхода из игры
     pygame.quit()  # Выход pygame
     sys.exit()  # Выход из программы
+
+
+def rect_side(rect1, rect2):
+    if rect1.y + rect1.h - 10 < rect2.y:
+        return 3
+    if rect1.x + rect1.w >= rect2.x and rect1.x < rect2.x:
+        return 1
+    elif rect2.x + rect2.w >= rect1.x and rect2.x < rect1.x:
+        return 2
+    else:
+        return 4
 
 
 def load_image(name, color_key=None):  # Функция загрузки программы
@@ -52,29 +64,32 @@ def load_level(filename):
     # и подсчитываем максимальную длину
     max_width = max(map(len, level_map))
 
-    ALL_WIDTH = max_width * 50
+    ALL_WIDTH = (max_width - 1) * 50
 
     # дополняем каждую строку пустыми клетками ('.')
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-def rect_side(rect1, rect2):
-    if rect1.y + 50 < rect2.y:
-        return 1
-    else:
-        return 0    
+def camera_configure(camera, target_rect):
+    l, t, _, _ = target_rect
+    _, _, w, h = camera
+    l, t = -l + WIDTH / 2, -t + HEIGHT / 2
+
+    l = min(0, l)                           # Не движемся дальше левой границы
+    l = max(-(camera.width-WIDTH), l)   # Не движемся дальше правой границы
+    t = max(-(camera.height-HEIGHT), t) # Не движемся дальше нижней границы
+    t = min(0, t)                           # Не движемся дальше верхней границы
+
+    return pygame.Rect(l, t, w, h)
 
 
 def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
-            if level[y][x] == '.':
-                Tile('empty', x, y)
-            elif level[y][x] == 'D':
+            if level[y][x] == 'D':
                 Tile('dirty', x, y)
             elif level[y][x] == '@':
-                Tile('empty', x, y)
                 new_player = Player(x, y)
             elif level[y][x] == '#':
                 Tile('ground', x, y)
@@ -82,24 +97,6 @@ def generate_level(level):
                 Enemy(x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
-
-
-class Camera:
-    # зададим начальный сдвиг камеры
-    def __init__(self):
-        self.dx = 0
-
-    # сдвинуть объект obj на смещение камеры
-    def apply(self, obj):
-        obj.rect.x += self.dx
-
-    # позиционировать камеру на объекте target
-    def update(self, target):
-        if target.x + target.rect.w // 2 >= WIDTH // 2 and \
-           target.x + target.rect.w // 2 + WIDTH // 2 <= ALL_WIDTH:
-            self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
-        else:
-            self.dx = 0
 
 
 class Tile(pygame.sprite.Sprite):
@@ -110,28 +107,65 @@ class Tile(pygame.sprite.Sprite):
                                                tile_height * pos_y)
 
 
+class Camera:
+
+    def __init__(self, camera_func, width, height):
+        self.camera_func = camera_func
+        self.state = pygame.Rect(0, 0, width, height)
+
+    def apply(self, target):
+        return target.rect.move(self.state.topleft)
+
+    def update(self, target):
+        self.state = self.camera_func(self.state, target.rect)
+
+
 class Player(pygame.sprite.Sprite):
 
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
-        self.x = tile_width * pos_x
         self.image = player_image
         self.rect = self.image.get_rect().move(tile_width * pos_x,
                                                tile_height * pos_y - 5)
 
     def update(self):
+        global LEFT
+        global RIGHT
+        global JUMP
+        global FALL
         global LIVES
-        global HARM
-        global Time
-        for i in enemys:
+        global DAMAGE
+        global TIME
+        t = False
+        for i in tiles_group:
             if self.rect.colliderect(i.rect):
-                if rect_side(self.rect, i.rect):
-                    i.kill()
-                else:
-                    if not HARM:
+                if rect_side(self.rect, i.rect) == 1:
+                    RIGHT = False
+                    break
+                elif rect_side(self.rect, i.rect) == 2:
+                    LEFT = False
+                    break
+                elif rect_side(self.rect, i.rect) == 3:
+                    t = True
+            else:
+                LEFT = True
+                RIGHT = True
+        if not t and not JUMP and LEFT and RIGHT:
+            FALL = True
+        else:
+            FALL = False
+
+        if not DAMAGE:
+            for i in enemys:
+                if self.rect.colliderect(i.rect):
+                    if rect_side(self.rect, i.rect) == 3 and not JUMP:
+                        i.kill()
+                    else:
                         LIVES -= 1
-                        HARM = True
-                        Time = pygame.time.get_ticks()
+                        DAMAGE = True
+                        TIME = pygame.time.get_ticks()
+                        if LIVES == 0:
+                            terminate()
 
 
 pygame.init()
@@ -142,11 +176,6 @@ pygame.display.set_caption('Treasure hunt')
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-all_sprites = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
-enemys = pygame.sprite.Group()
-
 
 class Enemy(pygame.sprite.Sprite):
     image = load_image("enemy.png", -1)
@@ -156,22 +185,28 @@ class Enemy(pygame.sprite.Sprite):
         self.image = Enemy.image
         self.rect = self.image.get_rect().move(tile_width * x,
                                                tile_height * y - 5)
-        self.x = tile_width * x
         self.v = -5
 
     def update(self):
-        a = ((self.rect.y + self.rect.h - 15) // (HEIGHT // level_y))
-        b = (self.x + self.v - 10) // (WIDTH // level_x)
-        if world[a][b] == '.' or \
-           world[a][b] == 'E' or \
-           world[a][b] == '@':
-            self.x += self.v
-            self.rect.x += self.v
-        else:
-            self.v = -self.v
+        for i in tiles_group:
+            if self.rect.colliderect(i.rect):
+                if rect_side(self.rect, i.rect) == 1:
+                    self.v = -self.v
+                    self.image = pygame.transform.flip(self.image, 1, 0)
+                elif rect_side(self.rect, i.rect) == 2:
+                    self.v = -self.v
+                    self.image = pygame.transform.flip(self.image, 1, 0)
+        self.rect.x += self.v
 
+
+all_sprites = pygame.sprite.Group()
+tiles_group = pygame.sprite.Group()
+player_group = pygame.sprite.Group()
+enemys = pygame.sprite.Group()
 
 background = pygame.image.load("data/background.png").convert()
+
+lives = load_image('lives.png', -1)
 
 tile_images = {'dirty': load_image('dirty.png'),
                'ground': load_image('ground.png'),
@@ -181,13 +216,19 @@ tile_width = tile_height = 50
 
 player_image = load_image('player.png', color_key=-1)
 
+load_image = load_image('lives.png', color_key=-1)
+
 world = load_level("FirstLevel.txt")
 
 player, level_x, level_y = generate_level(world)
 
-camera = Camera()
+total_level_width  = (level_x + 1) * tile_width  # Высчитываем фактическую ширину уровня
+total_level_height = (level_y + 1) * tile_height  # высоту
+
+camera = Camera(camera_configure, total_level_width, total_level_height)
 
 clock = pygame.time.Clock()
+
 
 while RUNNING:
 
@@ -195,56 +236,39 @@ while RUNNING:
         if event.type == pygame.QUIT:
             RUNNING = False
     keys = pygame.key.get_pressed()
-    a = (player.rect.y + player.rect.h - 15) // (HEIGHT // level_y)
-    b = (player.x - 15) // (WIDTH // level_x)
-    if keys[pygame.K_LEFT] and player.x > -10 and \
-       (world[a][b] == '.' or world[a][b] == 'E' or world[a][b] == '@'):
-        player.rect.x -= STEP
-        player.x -= STEP
-    b = (player.x + 20) // (WIDTH // level_x)
-    if keys[pygame.K_RIGHT] \
-       and player.x + player.rect.w <= ALL_WIDTH \
-       and (world[a][b] == '.' or world[a][b] == 'E' or world[a][b] == '@'):
+    if keys[pygame.K_RIGHT] and player.rect.x < ALL_WIDTH and RIGHT:
         player.rect.x += STEP
-        player.x += STEP
-    if not JUMP:
-        try:
-            a = (player.rect.y - FALL + player.rect.h - 15)
-            a = a // (HEIGHT // level_y) + 1
-            if world[a][(player.x + 10) // (WIDTH // level_x)] == '.' or \
-               world[a][(player.x + 10) // (WIDTH // level_x)] == 'E' or \
-               world[a][(player.x + 10) // (WIDTH // level_x)] == '@':
-                player.rect.y += FALL
-                ISFALL = True
-            else:
-                ISFALL = False
-        except:
-            player.rect.y += FALL
-        if not ISFALL and keys[pygame.K_UP]:
+        player.image = player_image
+    if keys[pygame.K_LEFT] and player.rect.x > -10 and LEFT:
+        player.rect.x -= STEP
+        player.image = pygame.transform.flip(player_image, 1, 0)
+    if not JUMP and not FALL:
+        if keys[pygame.K_UP]:
             JUMP = True
     else:
-        if jumpCount >= -0:
+        if jumpCount >= 0 and not FALL:
             player.rect.y -= jumpCount
             jumpCount -= 1
         else:
             jumpCount = 12
             JUMP = False
-
-    # изменяем ракурс камеры
-    camera.update(player)
-    # обновляем положение всех спрайтов
-    for sprite in all_sprites:
-        camera.apply(sprite)
+    if FALL:
+        player.rect.y += 4
 
     screen.blit(background, [0, 0])
 
-    all_sprites.draw(screen)
+    for i in range(LIVES):
+        screen.blit(lives, [i * 50, 0])
+
+    camera.update(player)
+
+    for e in all_sprites:
+        screen.blit(e.image, camera.apply(e))
     all_sprites.update()
-    if not HARM:
-        player.update()
-    else:
-        if pygame.time.get_ticks() - Time > 1800:
-            HARM = False
+
+    if DAMAGE:
+        if pygame.time.get_ticks() - TIME > 1200:
+            DAMAGE = False
 
     pygame.display.flip()
 
