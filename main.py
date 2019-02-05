@@ -20,22 +20,6 @@ RIGHT = True
 TIME = 0
 
 
-def terminate():  # Функция для выхода из игры
-    pygame.quit()  # Выход pygame
-    sys.exit()  # Выход из программы
-
-
-def rect_side(rect1, rect2):
-    if rect1.y + rect1.h - 10 < rect2.y:
-        return 3
-    if rect1.x + rect1.w >= rect2.x and rect1.x < rect2.x:
-        return 1
-    elif rect2.x + rect2.w >= rect1.x and rect2.x < rect1.x:
-        return 2
-    else:
-        return 4
-
-
 def load_image(name, color_key=None):  # Функция загрузки программы
     fullname = os.path.join('data', name)
 
@@ -52,6 +36,43 @@ def load_image(name, color_key=None):  # Функция загрузки про�
             color_key = image.get_at((0, 0))
         image.set_colorkey(color_key)
     return image
+
+
+
+def terminate():  # Функция для выхода из игры
+    pygame.quit()  # Выход pygame
+    sys.exit()  # Выход из программы
+
+
+def startGame():
+    start = pygame.image.load("data/start.png").convert()
+    Start()
+    Exit()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                for i in main_group:
+                    if i.clicked(event.pos) == 1:
+                        return
+                    elif i.clicked(event.pos) == 2:
+                        terminate()
+        screen.blit(start, [0, 0])
+        main_group.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+def rect_side(rect1, rect2):
+    if rect1.y + rect1.h - 10 < rect2.y:
+        return 3
+    if rect1.x + rect1.w >= rect2.x and rect1.x < rect2.x:
+        return 1
+    elif rect2.x + rect2.w >= rect1.x and rect2.x < rect1.x:
+        return 2
+    else:
+        return 4
+
 
 
 def load_level(filename):
@@ -176,6 +197,38 @@ pygame.display.set_caption('Treasure hunt')
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
+clock = pygame.time.Clock()
+
+main_group = pygame.sprite.Group()
+
+
+class Start(pygame.sprite.Sprite):
+    image = load_image('startgame.png', -1)
+
+    def __init__(self):
+        super().__init__(main_group)
+        self.image = Start.image
+        self.rect = self.image.get_rect().move(500, 350)
+
+    def clicked(self, cord):
+        if cord[0] >= self.rect.x and cord[0] <= self.rect.x + self.rect.w and cord[1] >= self.rect.y and cord[1] <= self.rect.y + self.rect.h:
+            return 1
+
+
+class Exit(pygame.sprite.Sprite):
+    image = load_image('exit.png', -1)
+
+    def __init__(self):
+        super().__init__(main_group)
+        self.image = Exit.image
+        self.rect = self.image.get_rect().move(500, 450)
+
+    def clicked(self, cord):
+        if cord[0] >= self.rect.x and cord[0] <= self.rect.x + self.rect.w and cord[1] >= self.rect.y and cord[1] <= self.rect.y + self.rect.h:
+            return 2
+
+
+startGame()
 
 class Enemy(pygame.sprite.Sprite):
     image = load_image("enemy.png", -1)
@@ -226,9 +279,6 @@ total_level_width  = (level_x + 1) * tile_width  # Высчитываем фак
 total_level_height = (level_y + 1) * tile_height  # высоту
 
 camera = Camera(camera_configure, total_level_width, total_level_height)
-
-clock = pygame.time.Clock()
-
 
 while RUNNING:
 
