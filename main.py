@@ -38,7 +38,6 @@ def load_image(name, color_key=None):  # Функция загрузки про�
     return image
 
 
-
 def terminate():  # Функция для выхода из игры
     pygame.quit()  # Выход pygame
     sys.exit()  # Выход из программы
@@ -63,6 +62,7 @@ def startGame():
         pygame.display.flip()
         clock.tick(FPS)
 
+
 def gameOver():
     while True:
         for event in pygame.event.get():
@@ -72,7 +72,7 @@ def gameOver():
                 terminate()
         screen.blit(overImage, [0, 0])
         pygame.display.flip()
-        
+
 
 def rect_side(rect1, rect2):
     if rect1.y + rect1.h - 10 < rect2.y:
@@ -83,7 +83,6 @@ def rect_side(rect1, rect2):
         return 2
     else:
         return 4
-
 
 
 def load_level(filename):
@@ -107,10 +106,10 @@ def camera_configure(camera, target_rect):
     _, _, w, h = camera
     l, t = -l + WIDTH / 2, -t + HEIGHT / 2
 
-    l = min(0, l)                           # Не движемся дальше левой границы
-    l = max(-(camera.width-WIDTH), l)   # Не движемся дальше правой границы
-    t = max(-(camera.height-HEIGHT), t) # Не движемся дальше нижней границы
-    t = min(0, t)                           # Не движемся дальше верхней границы
+    l = min(0, l)  # Не движемся дальше левой границы
+    l = max(-(camera.width-WIDTH), l)  # Не движемся дальше правой границы
+    t = max(-(camera.height-HEIGHT), t)  # Не движемся дальше нижней границы
+    t = min(0, t)  # Не движемся дальше верхней границы
 
     return pygame.Rect(l, t, w, h)
 
@@ -222,7 +221,10 @@ class Start(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(500, 350)
 
     def clicked(self, cord):
-        if cord[0] >= self.rect.x and cord[0] <= self.rect.x + self.rect.w and cord[1] >= self.rect.y and cord[1] <= self.rect.y + self.rect.h:
+        if cord[0] >= self.rect.x and \
+           cord[0] <= self.rect.x + self.rect.w and \
+           cord[1] >= self.rect.y and \
+           cord[1] <= self.rect.y + self.rect.h:
             return 1
 
 
@@ -235,13 +237,17 @@ class Exit(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(500, 450)
 
     def clicked(self, cord):
-        if cord[0] >= self.rect.x and cord[0] <= self.rect.x + self.rect.w and cord[1] >= self.rect.y and cord[1] <= self.rect.y + self.rect.h:
+        if cord[0] >= self.rect.x and \
+           cord[0] <= self.rect.x + self.rect.w and \
+           cord[1] >= self.rect.y and \
+           cord[1] <= self.rect.y + self.rect.h:
             return 2
 
 
 startGame()
 
 overImage = load_image('gameover.png')
+
 
 class Enemy(pygame.sprite.Sprite):
     image = load_image("enemy.png", -1)
@@ -288,7 +294,9 @@ world = load_level("FirstLevel.txt")
 
 player, level_x, level_y = generate_level(world)
 
-total_level_width  = (level_x + 1) * tile_width  # Высчитываем фактическую ширину уровня
+total_level_width = (level_x + 1) * tile_width
+# Высчитываем фактическую ширину уровня
+
 total_level_height = (level_y + 1) * tile_height  # высоту
 
 camera = Camera(camera_configure, total_level_width, total_level_height)
