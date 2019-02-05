@@ -52,7 +52,7 @@ def startGame():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
                 for i in main_group:
                     if i.clicked(event.pos) == 1:
                         return
@@ -62,6 +62,17 @@ def startGame():
         main_group.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
+
+def gameOver():
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                terminate()
+        screen.blit(overImage, [0, 0])
+        pygame.display.flip()
+        
 
 def rect_side(rect1, rect2):
     if rect1.y + rect1.h - 10 < rect2.y:
@@ -186,7 +197,7 @@ class Player(pygame.sprite.Sprite):
                         DAMAGE = True
                         TIME = pygame.time.get_ticks()
                         if LIVES == 0:
-                            terminate()
+                            gameOver()
 
 
 pygame.init()
@@ -229,6 +240,8 @@ class Exit(pygame.sprite.Sprite):
 
 
 startGame()
+
+overImage = load_image('gameover.png')
 
 class Enemy(pygame.sprite.Sprite):
     image = load_image("enemy.png", -1)
