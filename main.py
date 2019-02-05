@@ -3,39 +3,39 @@ import os
 import sys
 # Импортирование библиотек
 
-LIVES = 3
+LIVES = 3  # Количество жизней
 FPS = 60  # Количество кадров в секунду
 WIDTH = 1200  # Ширина окна
-ALL_WIDTH = 0
+ALL_WIDTH = 0  # Длинна всего игрового поля
 HEIGHT = 800  # Высота окна
 RUNNING = True  # Переменная для проверки работы программы
 player = None  # Основной персонаж
-JUMP = False
-DAMAGE = False
+JUMP = False  # Переменная для прыжка
+DAMAGE = False  # Переменная при получении урона
 FALL = False  # Количество пикселей при падении
 jumpCount = 12  # Высота прыжка
 STEP = 10  # Перемещние ща одно нажатие
-LEFT = True
-RIGHT = True
-TIME = 0
+LEFT = True  # Можно ли идти влево
+RIGHT = True  # Можно ли идти вправо
+TIME = 0  # Время
 
 
 def load_image(name, color_key=None):  # Функция загрузки программы
-    fullname = os.path.join('data', name)
+    fullname = os.path.join('data', name)  # Открытие файла
 
     try:
-        image = pygame.image.load(fullname)
+        image = pygame.image.load(fullname)  # Открыть фалй
     except pygame.error as message:
         print('Cannot load image:', name)
-        raise SystemExit(message)
+        raise SystemExit(message)  # Создать исключение
 
-    image = image.convert()
+    image = image.convert()  # Конверировании изображения
 
-    if color_key is not None:
+    if color_key is not None:  # Если передан аргумент
         if color_key is -1:
             color_key = image.get_at((0, 0))
-        image.set_colorkey(color_key)
-    return image
+        image.set_colorkey(color_key)  # Убрать фон у картинки
+    return image  # Вернуть изображение
 
 
 def terminate():  # Функция для выхода из игры
@@ -43,38 +43,44 @@ def terminate():  # Функция для выхода из игры
     sys.exit()  # Выход из программы
 
 
-def startGame():
+def startGame():  # Функция для начала игры
+    # Фоновое изображение
     start = pygame.image.load("data/start.png").convert()
-    Start()
-    Exit()
+    Start()  # Спрайт начала игры
+    Exit()  # Спрайт для выхода
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                terminate()
+                terminate()  # Выход если нажата кнопка
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 for i in main_group:
                     if i.clicked(event.pos) == 1:
-                        return
+                        return  # Если нажата кнопка для игры, начать игру
                     elif i.clicked(event.pos) == 2:
-                        terminate()
-        screen.blit(start, [0, 0])
-        main_group.draw(screen)
-        pygame.display.flip()
-        clock.tick(FPS)
+                        terminate()  # Если нажата кнопка для выхожа, выйти
+        screen.blit(start, [0, 0])  # Вывод изображения
+        main_group.draw(screen)  # Вывод спрайтов
+        pygame.display.flip()  # Обновление картинки
+        clock.tick(FPS)  # Количество кадров в секунду
 
 
-def gameOver():
+def gameOver():  # Функция для конца игры
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                terminate()
-        screen.blit(overImage, [0, 0])
-        pygame.display.flip()
+                terminate()  # Выход при нажатии любой кнопка
+        screen.blit(overImage, [0, 0])  # Вывод фонового изображения
+        pygame.display.flip()  # Обновления картинки
 
 
+# Функция для проверки с какой стороны столкнулись спрайты
 def rect_side(rect1, rect2):
+    # 1 справа
+    # 2 слева
+    # 3 сверху
+    # 4 снизу
     if rect1.y + rect1.h - 10 < rect2.y:
         return 3
     if rect1.x + rect1.w >= rect2.x and rect1.x < rect2.x:
@@ -85,7 +91,7 @@ def rect_side(rect1, rect2):
         return 4
 
 
-def load_level(filename):
+def load_level(filename):  # Функция для получения списка из игры
     global ALL_WIDTH
     filename = "levels/" + filename
     # читаем уровень, убирая символы перевода строки
@@ -101,7 +107,7 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-def camera_configure(camera, target_rect):
+def camera_configure(camera, target_rect):  # Конфигурации камеры
     l, t, _, _ = target_rect
     _, _, w, h = camera
     l, t = -l + WIDTH / 2, -t + HEIGHT / 2
@@ -114,7 +120,7 @@ def camera_configure(camera, target_rect):
     return pygame.Rect(l, t, w, h)
 
 
-def generate_level(level):
+def generate_level(level):  # Функция для создания уровня
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
@@ -125,7 +131,7 @@ def generate_level(level):
             elif level[y][x] == '#':
                 Tile('ground', x, y)
             elif level[y][x] == 'E':
-                Enemy(x, y)
+                Enemy(x, y)  # Создания спрайта
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
