@@ -132,8 +132,18 @@ def generate_level(level):  # Функция для создания уровн�
                 Tile('ground', x, y)
             elif level[y][x] == 'E':
                 Enemy(x, y)  # Создания спрайта
+            elif level[y][x] == 'C':
+                Complete(x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
+
+
+class Complete(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(complete_group, all_sprites)
+        self.image = complete_image
+        self.rect = self.image.get_rect().move(tile_width * pos_x,
+                                               tile_height * pos_y)
 
 
 class Tile(pygame.sprite.Sprite):
@@ -281,6 +291,7 @@ all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 enemys = pygame.sprite.Group()
+complete_group = pygame.sprite.Group()
 
 background = pygame.image.load("data/background.png").convert()
 
@@ -294,7 +305,7 @@ tile_width = tile_height = 50
 
 player_image = load_image('player.png', color_key=-1)
 
-load_image = load_image('lives.png', color_key=-1)
+complete_image = load_image('complete.png', -1)
 
 world = load_level("FirstLevel.txt")
 
