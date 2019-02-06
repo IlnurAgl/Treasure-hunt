@@ -92,10 +92,32 @@ def game():  # Основная функция игры
     # Создание камеры
 
     while RUNNING:  # Основной игровой цикл
-
+        STOP = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 RUNNING = False  # Выход
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if pygame.Rect(event.pos[0], event.pos[1], 100, 100).colliderect(pygame.Rect(1100, 0, 100, 100)):
+                    screen.fill((255, 255, 255))
+                    screen.blit(load_image('continue.png', -1), [500, 350])
+                    screen.blit(load_image('exit.png', -1), [500, 500])
+                    while True:
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT:
+                                terminate()  # Выход если нажата кнопка
+                            elif event.type == pygame.MOUSEBUTTONDOWN:
+                                if pygame.Rect(500, 350, 200, 100).colliderect(pygame.Rect(event.pos[0], event.pos[1], 2, 2)):
+                                    STOP = True
+                                    break
+                                elif pygame.Rect(500, 500, 200, 100).colliderect(pygame.Rect(event.pos[0], event.pos[1], 2, 2)):
+                                    startGame()
+                                    terminate()
+                        pygame.display.flip()  # Обновление окна
+                            
+                        clock.tick(FPS)  # Количество кадров в секунду
+                        if STOP:
+                            break
+    
         keys = pygame.key.get_pressed()
         if keys[pygame.K_RIGHT] and player.rect.x < ALL_WIDTH and RIGHT:
             player.rect.x += STEP
@@ -122,6 +144,8 @@ def game():  # Основная функция игры
 
         for i in range(LIVES):  # Создание жизней
             screen.blit(lives, [i * 50, 0])
+        
+        screen.blit(pause_image, [1100, 0])
 
         camera.update(player)  # Обновление камеры
 
@@ -501,6 +525,8 @@ complete_image = load_image('complete.png', -1)
 level_complete_image = load_image('levelcomplet.png')
 
 lives = load_image('lives.png', -1)
+
+pause_image = load_image('pause.png', -1)
 
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
