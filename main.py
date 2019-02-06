@@ -6,7 +6,7 @@ import random
 
 
 LIVES = 3  # Количество жизней
-FPS = 60  # Количество кадров в секунду
+FPS = 50  # Количество кадров в секунду
 WIDTH = 1200  # Ширина окна
 ALL_WIDTH = 0  # Длинна всего игрового поля
 HEIGHT = 800  # Высота окна
@@ -15,16 +15,18 @@ player = None  # Основной персонаж
 JUMP = False  # Переменная для прыжка
 DAMAGE = False  # Переменная при получении урона
 FALL = False  # Количество пикселей при падении
-jumpCount = 12  # Высота прыжка
+jumpCount = 13  # Высота прыжка
 STEP = 10  # Перемещние ща одно нажатие
 LEFT = True  # Можно ли идти влево
 RIGHT = True  # Можно ли идти вправо
 TIME = 0  # Время
 GRAVITY = 3
+COINS = 0
 try:
     f = open('level.txt', 'r')
     LEVEL = int(f.readline())
     LIVES = int(f.readline())
+    COINS = int(f.readline())
     f.close()
 except:
     LEVEL = 1  # Уровень
@@ -135,7 +137,7 @@ def game():  # Основная функция игры
                 player.rect.y -= jumpCount
                 jumpCount -= 1  # Изменение координаты при прыжке
             else:
-                jumpCount = 12
+                jumpCount = 13
                 JUMP = False
         if FALL:
             player.rect.y += 5  # Гравитация
@@ -144,7 +146,15 @@ def game():  # Основная функция игры
 
         for i in range(LIVES):  # Создание жизней
             screen.blit(lives, [i * 50, 0])
-        
+
+        font = pygame.font.Font(None, 30)
+        text = font.render("Coins" + str(COINS), 1, (100, 255, 100))
+        text_x = 900 - text.get_width() // 2
+        text_y = 100 // 2 - text.get_height() // 2
+        text_w = text.get_width()
+        text_h = text.get_height()
+        screen.blit(text, (text_x, text_y))
+
         screen.blit(pause_image, [1100, 0])
 
         camera.update(player)  # Обновление камеры
@@ -154,6 +164,7 @@ def game():  # Основная функция игры
         all_sprites.update()
 
         if DAMAGE:  # При нанесении урона
+            player.image = load_image('playerHarm.png', -1)
             if pygame.time.get_ticks() - TIME > 1200:
                 DAMAGE = False
         pygame.display.flip()  # Обновление окна
@@ -181,6 +192,7 @@ def startGame():  # Функция для начала игры
                     if i.clicked(event.pos) == 1:
                         LEVEL = 1
                         LIVES = 3
+                        COINS = 0
                         game()  # Если нажата кнопка для игры, начать игру
                     elif i.clicked(event.pos) == 2:
                         terminate()  # Если нажата кнопка для выхожа, выйти
@@ -195,6 +207,8 @@ def startGame():  # Функция для начала игры
 
 def gameOver():  # Функция для конца игры
     global LEVEL
+    global COINS
+    COINS = 0
     LEVEL = 1
     while True:
         for event in pygame.event.get():
@@ -209,11 +223,13 @@ def gameOver():  # Функция для конца игры
 def level_complete():
     global LEVEL
     global LIVES
+    global COINS
     global particles_group
     LEVEL += 1
     f = open('level.txt', 'w')
     f.write(str(LEVEL) + '\n')
-    f.write(str(LIVES))
+    f.write(str(LIVES) + '\n')
+    f.write(str(COINS))
     f.close()
     if LEVEL > 2:
         LEVEL = 1
@@ -305,6 +321,8 @@ def generate_level(level):  # Функция для создания уровн�
                 Enemy(x, y)  # Создания спрайта
             elif level[y][x] == 'C':
                 Complete(x, y)
+            elif level[y][x] == 'M':
+                Coin(x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
@@ -318,7 +336,7 @@ def create_particles(position):
         Particle(position, random.choice(numbers), random.choice(numbers))
 
 
-class Complete(pygame.sprite.Sprite):
+class Complete(pygame.sprite.Sprite):  # Класс при прохождении
     def __init__(self, pos_x, pos_y):
         super().__init__(complete_group, all_sprites)
         self.image = complete_image
@@ -326,7 +344,7 @@ class Complete(pygame.sprite.Sprite):
                                                tile_height * pos_y)
 
 
-class Tile(pygame.sprite.Sprite):
+class Tile(pygame.sprite.Sprite):  # Класс для окружающих объектов
 
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
@@ -335,7 +353,16 @@ class Tile(pygame.sprite.Sprite):
                                                tile_height * pos_y)
 
 
-class Camera:
+class Coin(pygame.sprite.Sprite):  # Класс монет
+
+    def __init__(self, pos_x, pos_y):
+        super().__init__(coin_group, all_sprites)
+        self.image = coin_image
+        self.rect = self.image.get_rect().move(tile_width * pos_x,
+                                               tile_height * pos_y)
+
+
+class Camera:  # Класс камеры
 
     def __init__(self, camera_func, width, height):
         self.camera_func = camera_func
@@ -348,7 +375,7 @@ class Camera:
         self.state = self.camera_func(self.state, target.rect)
 
 
-class Player(pygame.sprite.Sprite):
+class Player(pygame.sprite.Sprite):  # Класс игрока
 
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
@@ -364,6 +391,7 @@ class Player(pygame.sprite.Sprite):
         global LIVES
         global DAMAGE
         global TIME
+        global COINS
         t = False
         for i in tiles_group:
             if self.rect.colliderect(i.rect):
@@ -388,6 +416,7 @@ class Player(pygame.sprite.Sprite):
                 if self.rect.colliderect(i.rect):
                     if rect_side(self.rect, i.rect) == 3 and not JUMP:
                         i.kill()
+                        COINS += 50
                     else:
                         LIVES -= 1
                         DAMAGE = True
@@ -395,11 +424,14 @@ class Player(pygame.sprite.Sprite):
                         if LIVES == 0:
                             gameOver()
 
+        if pygame.sprite.spritecollide(self, coin_group, 1):
+            COINS += 100
+
         if pygame.sprite.spritecollideany(self, complete_group):
             level_complete()
 
 
-pygame.init()
+pygame.init()  # Инициализация
 
 pygame.key.set_repeat(200, 70)
 
@@ -408,7 +440,7 @@ pygame.display.set_caption('Treasure hunt')
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 
-class Particle(pygame.sprite.Sprite):
+class Particle(pygame.sprite.Sprite):  # Класс частиц
     # сгенерируем частицы разного размера
     fire = [load_image("star.png")]
     for scale in (5, 10, 20):
@@ -439,7 +471,7 @@ class Particle(pygame.sprite.Sprite):
             self.kill()
 
 
-class Start(pygame.sprite.Sprite):
+class Start(pygame.sprite.Sprite):  # Класс для начала игры
     image = load_image('startgame.png', -1)
 
     def __init__(self):
@@ -455,7 +487,7 @@ class Start(pygame.sprite.Sprite):
             return 1
 
 
-class Exit(pygame.sprite.Sprite):
+class Exit(pygame.sprite.Sprite):  # Класс выхожа из игры
     image = load_image('exit.png', -1)
 
     def __init__(self):
@@ -471,7 +503,7 @@ class Exit(pygame.sprite.Sprite):
             return 2
 
 
-class Continue(pygame.sprite.Sprite):
+class Continue(pygame.sprite.Sprite):  # Класс для продолжения игры
     image = load_image('continue.png', -1)
 
     def __init__(self):
@@ -487,7 +519,7 @@ class Continue(pygame.sprite.Sprite):
             return 3
 
 
-class Enemy(pygame.sprite.Sprite):
+class Enemy(pygame.sprite.Sprite):  # Класс для враждембных существ
     image = load_image("enemy.png", -1)
 
     def __init__(self, x, y):
@@ -534,10 +566,15 @@ player_group = pygame.sprite.Group()
 enemys = pygame.sprite.Group()
 complete_group = pygame.sprite.Group()
 particles_group = pygame.sprite.Group()
+coin_group = pygame.sprite.Group()
+# Создание групп спрайтов
 
 overImage = load_image('gameover.png')
 
+coin_image = load_image('coin.png', -1)
+
 pygame.mixer.music.load('Data\main.mp3')
 pygame.mixer.music.play(-1)
+# Создание музыки
 
 startGame()
