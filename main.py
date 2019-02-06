@@ -1,7 +1,9 @@
 import pygame
 import os
 import sys
+import random
 # Импортирование библиотек
+
 
 LIVES = 3  # Количество жизней
 FPS = 60  # Количество кадров в секунду
@@ -18,6 +20,14 @@ STEP = 10  # Перемещние ща одно нажатие
 LEFT = True  # Можно ли идти влево
 RIGHT = True  # Можно ли идти вправо
 TIME = 0  # Время
+GRAVITY = 3
+try:
+    f = open('level.txt', 'r')
+    LEVEL = int(f.readline())
+    LIVES = int(f.readline())
+    f.close()
+except:
+    LEVEL = 1  # Уровень
 
 
 def load_image(name, color_key=None):  # Функция загрузки программы
@@ -43,11 +53,101 @@ def terminate():  # Функция для выхода из игры
     sys.exit()  # Выход из программы
 
 
+def game():  # Основная функция игры
+    global all_sprites
+    global tiles_group
+    global player_group
+    global enemys
+    global complete_group
+    global RUNNING
+    global JUMP
+    global FALL
+    global DAMAGE
+    global FPS
+    global TIME
+    global jumpCount
+    global LEVEL
+    # Использование глоабльных переменных
+
+    all_sprites = pygame.sprite.Group()
+    tiles_group = pygame.sprite.Group()
+    player_group = pygame.sprite.Group()
+    enemys = pygame.sprite.Group()
+    complete_group = pygame.sprite.Group()
+    # Создание всех групп спрайтов
+
+    background = pygame.image.load("data/background.png").convert()
+    # Картинка заднего фона
+
+    world = load_level(str(LEVEL) + ".txt")  # Создание мира
+
+    player, level_x, level_y = generate_level(world)  # Создание игрока
+
+    total_level_width = (level_x + 1) * tile_width
+    # Высчитываем фактическую ширину уровня
+
+    total_level_height = (level_y + 1) * tile_height  # высоту
+
+    camera = Camera(camera_configure, total_level_width, total_level_height)
+    # Создание камеры
+
+    while RUNNING:  # Основной игровой цикл
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                RUNNING = False  # Выход
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_RIGHT] and player.rect.x < ALL_WIDTH and RIGHT:
+            player.rect.x += STEP
+            player.image = player_image
+            # Движение вправо и замена картины
+        if keys[pygame.K_LEFT] and player.rect.x > -10 and LEFT:
+            player.rect.x -= STEP
+            player.image = pygame.transform.flip(player_image, 1, 0)
+            # Движение влево и замена картины
+        if not JUMP and not FALL:
+            if keys[pygame.K_UP]:
+                JUMP = True  # Прыжок
+        else:
+            if jumpCount >= 0 and not FALL:
+                player.rect.y -= jumpCount
+                jumpCount -= 1  # Изменение координаты при прыжке
+            else:
+                jumpCount = 12
+                JUMP = False
+        if FALL:
+            player.rect.y += 5  # Гравитация
+
+        screen.blit(background, [0, 0])  # Вывод фона
+
+        for i in range(LIVES):  # Создание жизней
+            screen.blit(lives, [i * 50, 0])
+
+        camera.update(player)  # Обновление камеры
+
+        for e in all_sprites:
+            screen.blit(e.image, camera.apply(e))  # Вывод всех спрайтов
+        all_sprites.update()
+
+        if DAMAGE:  # При нанесении урона
+            if pygame.time.get_ticks() - TIME > 1200:
+                DAMAGE = False
+        pygame.display.flip()  # Обновление окна
+
+        clock.tick(FPS)  # Количество кадров в секунду
+
+    terminate()  # Выход из игры
+
+
 def startGame():  # Функция для начала игры
     # Фоновое изображение
+    global LIVES
+    global LEVEL
     start = pygame.image.load("data/start.png").convert()
     Start()  # Спрайт начала игры
     Exit()  # Спрайт для выхода
+    if LEVEL > 1:
+        con = Continue()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -55,9 +155,14 @@ def startGame():  # Функция для начала игры
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 for i in main_group:
                     if i.clicked(event.pos) == 1:
-                        return  # Если нажата кнопка для игры, начать игру
+                        LEVEL = 1
+                        LIVES = 3
+                        game()  # Если нажата кнопка для игры, начать игру
                     elif i.clicked(event.pos) == 2:
                         terminate()  # Если нажата кнопка для выхожа, выйти
+                    elif i.clicked(event.pos) == 3:
+                        con.kill()
+                        game()
         screen.blit(start, [0, 0])  # Вывод изображения
         main_group.draw(screen)  # Вывод спрайтов
         pygame.display.flip()  # Обновление картинки
@@ -65,14 +170,56 @@ def startGame():  # Функция для начала игры
 
 
 def gameOver():  # Функция для конца игры
+    global LEVEL
+    LEVEL = 1
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                terminate()  # Выход при нажатии любой кнопка
+                startGame()  # Выход при нажатии любой кнопка
         screen.blit(overImage, [0, 0])  # Вывод фонового изображения
         pygame.display.flip()  # Обновления картинки
+
+
+def level_complete():
+    global LEVEL
+    global LIVES
+    global particles_group
+    LEVEL += 1
+    f = open('level.txt', 'w')
+    f.write(str(LEVEL) + '\n')
+    f.write(str(LIVES))
+    f.close()
+    if LEVEL > 2:
+        LEVEL = 1
+        os.remove('level.txt')
+        TIME = pygame.time.get_ticks()
+        screen.fill((0, 0, 0))
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    startGame()
+            if pygame.time.get_ticks() - TIME > 1000:
+                create_particles((random.randint(0, WIDTH),
+                                  random.randint(0, HEIGHT)))
+            particles_group.update()
+            screen.fill((0, 0, 0))
+            particles_group.draw(screen)
+            pygame.display.flip()
+            clock.tick(50)
+    else:
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    game()  # Выход при нажатии любой кнопка
+            screen.blit(level_complete_image, [0, 0])
+            # Вывод фонового изображения
+            pygame.display.flip()  # Обновления картинки
 
 
 # Функция для проверки с какой стороны столкнулись спрайты
@@ -138,6 +285,15 @@ def generate_level(level):  # Функция для создания уровн�
     return new_player, x, y
 
 
+def create_particles(position):
+    # количество создаваемых частиц
+    particle_count = 20
+    # возможные скорости
+    numbers = range(-20, 20)
+    for _ in range(particle_count):
+        Particle(position, random.choice(numbers), random.choice(numbers))
+
+
 class Complete(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(complete_group, all_sprites)
@@ -147,6 +303,7 @@ class Complete(pygame.sprite.Sprite):
 
 
 class Tile(pygame.sprite.Sprite):
+
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
         self.image = tile_images[tile_type]
@@ -173,7 +330,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__(player_group, all_sprites)
         self.image = player_image
         self.rect = self.image.get_rect().move(tile_width * pos_x,
-                                               tile_height * pos_y - 5)
+                                               tile_height * pos_y - 15)
 
     def update(self):
         global LEFT
@@ -214,6 +371,9 @@ class Player(pygame.sprite.Sprite):
                         if LIVES == 0:
                             gameOver()
 
+        if pygame.sprite.spritecollideany(self, complete_group):
+            level_complete()
+
 
 pygame.init()
 
@@ -223,9 +383,36 @@ pygame.display.set_caption('Treasure hunt')
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-clock = pygame.time.Clock()
 
-main_group = pygame.sprite.Group()
+class Particle(pygame.sprite.Sprite):
+    # сгенерируем частицы разного размера
+    fire = [load_image("star.png")]
+    for scale in (5, 10, 20):
+        fire.append(pygame.transform.scale(fire[0], (scale, scale)))
+
+    def __init__(self, pos, dx, dy):
+        super().__init__(particles_group)
+        self.image = random.choice(self.fire)
+        self.rect = self.image.get_rect()
+
+        # у каждой частицы своя скорость — это вектор
+        self.velocity = [dx, dy]
+        # и свои координаты
+        self.rect.x, self.rect.y = pos
+
+        # гравитация будет одинаковой (значение константы)
+        self.gravity = GRAVITY
+
+    def update(self):
+        # применяем гравитационный эффект:
+        # движение с ускорением под действием гравитации
+        self.velocity[1] += self.gravity
+        # перемещаем частицу
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        # убиваем, если частица ушла за экран
+        if not self.rect.colliderect(pygame.Rect(0, 0, WIDTH, HEIGHT)):
+            self.kill()
 
 
 class Start(pygame.sprite.Sprite):
@@ -260,9 +447,20 @@ class Exit(pygame.sprite.Sprite):
             return 2
 
 
-startGame()
+class Continue(pygame.sprite.Sprite):
+    image = load_image('continue.png', -1)
 
-overImage = load_image('gameover.png')
+    def __init__(self):
+        super().__init__(main_group)
+        self.image = Continue.image
+        self.rect = self.image.get_rect().move(500, 250)
+
+    def clicked(self, cord):
+        if cord[0] >= self.rect.x and \
+           cord[0] <= self.rect.x + self.rect.w and \
+           cord[1] >= self.rect.y and \
+           cord[1] <= self.rect.y + self.rect.h:
+            return 3
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -287,19 +485,12 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.x += self.v
 
 
-all_sprites = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
-enemys = pygame.sprite.Group()
-complete_group = pygame.sprite.Group()
+clock = pygame.time.Clock()
 
-background = pygame.image.load("data/background.png").convert()
-
-lives = load_image('lives.png', -1)
+main_group = pygame.sprite.Group()
 
 tile_images = {'dirty': load_image('dirty.png'),
-               'ground': load_image('ground.png'),
-               'empty': load_image('white.png', -1)}
+               'ground': load_image('ground.png')}
 
 tile_width = tile_height = 50
 
@@ -307,59 +498,17 @@ player_image = load_image('player.png', color_key=-1)
 
 complete_image = load_image('complete.png', -1)
 
-world = load_level("FirstLevel.txt")
+level_complete_image = load_image('levelcomplet.png')
 
-player, level_x, level_y = generate_level(world)
+lives = load_image('lives.png', -1)
 
-total_level_width = (level_x + 1) * tile_width
-# Высчитываем фактическую ширину уровня
+all_sprites = pygame.sprite.Group()
+tiles_group = pygame.sprite.Group()
+player_group = pygame.sprite.Group()
+enemys = pygame.sprite.Group()
+complete_group = pygame.sprite.Group()
+particles_group = pygame.sprite.Group()
 
-total_level_height = (level_y + 1) * tile_height  # высоту
+overImage = load_image('gameover.png')
 
-camera = Camera(camera_configure, total_level_width, total_level_height)
-
-while RUNNING:
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            RUNNING = False
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_RIGHT] and player.rect.x < ALL_WIDTH and RIGHT:
-        player.rect.x += STEP
-        player.image = player_image
-    if keys[pygame.K_LEFT] and player.rect.x > -10 and LEFT:
-        player.rect.x -= STEP
-        player.image = pygame.transform.flip(player_image, 1, 0)
-    if not JUMP and not FALL:
-        if keys[pygame.K_UP]:
-            JUMP = True
-    else:
-        if jumpCount >= 0 and not FALL:
-            player.rect.y -= jumpCount
-            jumpCount -= 1
-        else:
-            jumpCount = 12
-            JUMP = False
-    if FALL:
-        player.rect.y += 4
-
-    screen.blit(background, [0, 0])
-
-    for i in range(LIVES):
-        screen.blit(lives, [i * 50, 0])
-
-    camera.update(player)
-
-    for e in all_sprites:
-        screen.blit(e.image, camera.apply(e))
-    all_sprites.update()
-
-    if DAMAGE:
-        if pygame.time.get_ticks() - TIME > 1200:
-            DAMAGE = False
-
-    pygame.display.flip()
-
-    clock.tick(FPS)
-
-terminate()  # Выход из игры
+startGame()
