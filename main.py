@@ -511,4 +511,7 @@ particles_group = pygame.sprite.Group()
 
 overImage = load_image('gameover.png')
 
+pygame.mixer.music.load('Data\main.mp3')
+pygame.mixer.music.play(-1)
+
 startGame()
