@@ -76,6 +76,8 @@ def game():  # Основная функция игры
     player_group = pygame.sprite.Group()
     enemys = pygame.sprite.Group()
     complete_group = pygame.sprite.Group()
+    particles_group = pygame.sprite.Group()
+    coin_group = pygame.sprite.Group()
     # Создание всех групп спрайтов
 
     background = pygame.image.load("data/background.png").convert()
@@ -99,7 +101,7 @@ def game():  # Основная функция игры
             if event.type == pygame.QUIT:
                 RUNNING = False  # Выход
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if pygame.Rect(event.pos[0], event.pos[1], 100, 100).colliderect(pygame.Rect(1100, 0, 100, 100)):
+                if pygame.Rect(event.pos[0], event.pos[1], 1, 1).colliderect(pygame.Rect(1100, 0, 100, 100)):
                     screen.fill((255, 255, 255))
                     screen.blit(load_image('continue.png', -1), [500, 350])
                     screen.blit(load_image('exit.png', -1), [500, 500])
@@ -442,7 +444,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 class Particle(pygame.sprite.Sprite):  # Класс частиц
     # сгенерируем частицы разного размера
-    fire = [load_image("star.png")]
+    fire = [load_image("star.png", -1)]
     for scale in (5, 10, 20):
         fire.append(pygame.transform.scale(fire[0], (scale, scale)))
 
